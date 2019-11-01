@@ -1,0 +1,18 @@
+version: "3.4"
+services:
+  dev:
+    build:
+      context: .
+      dockerfile: ${ARCH}.Dockerfile
+      target: build
+    image: openvino-build-${ARCH}
+    volumes:
+      - ".:/workdir:rw"
+  runtime:
+    build:
+      context: .
+      dockerfile: ${ARCH}.Dockerfile
+      target: runtime
+    image: openvino-runtime-${ARCH}
+    volumes:
+      - ".:/workdir:rw"

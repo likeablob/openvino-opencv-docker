@@ -1,0 +1,68 @@
+image: docker:latest
+services:
+  - docker:dind
+
+stages:
+  - build
+
+variables:
+  IMAGE_TAG: $CI_REGISTRY_IMAGE:$CI_COMMIT_REF_NAME
+  DOCKER_DRIVER: overlay2
+
+before_script:
+  - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
+  - echo $CI_REGISTRY_USER $CI_REGISTRY_PASSWORD $CI_REGISTRY
+  - free -g
+  - df -h
+  - cat /proc/cpuinfo
+
+build_images:
+  stage: build
+  # before_script:
+  #   - docker info
+  #   - apk add --update python-dev libffi-dev openssl-dev gcc libc-dev make py-pip && pip install docker-compose
+
+  script:
+    # Build arm64v8 image
+    - export T_ARCH=arm64v8
+    - export TAG_BUILD=${IMAGE_TAG}-build-${T_ARCH}
+    - export TAG_RUNTIME=${IMAGE_TAG}-runtime-${T_ARCH}
+    - export TAG_BUILD2=registry.gitlab.com/likeablob/openvino-docker:devel-build-${T_ARCH}
+    - export TAG_RUNTIME2=registry.gitlab.com/likeablob/openvino-docker:devel-runtime-${T_ARCH}
+
+    - docker pull ${TAG_BUILD2} || true
+    - docker build --cache-from ${TAG_BUILD2} --pull --target build -t ${TAG_BUILD} -f ${T_ARCH}.Dockerfile .
+    # - docker tag ${TAG_BUILD} openvino-build-${T_ARCH}:latest # A temporary tag for `runtime` build
+    # - docker tag ${TAG_BUILD2} ${TAG_BUILD} # A temporary tag for `runtime` build
+    - docker push ${TAG_BUILD}
+
+    - docker pull ${TAG_RUNTIME2} || true
+    - docker build --cache-from ${TAG_BUILD2} --cache-from ${TAG_RUNTIME2} --pull --target runtime -t ${TAG_RUNTIME} -f ${T_ARCH}.Dockerfile .
+    # - docker tag ${TAG_RUNTIME2} ${TAG_RUNTIME} # A temporary tag for `runtime` build
+    - docker push ${TAG_RUNTIME}
+
+    # Build x86_64 image
+    - export T_ARCH=x86_64
+    - export TAG_BUILD=${IMAGE_TAG}-build-${T_ARCH}
+    - export TAG_RUNTIME=${IMAGE_TAG}-runtime-${T_ARCH}
+    - export TAG_BUILD2=registry.gitlab.com/likeablob/openvino-docker:devel-build-${T_ARCH}
+    - export TAG_RUNTIME2=registry.gitlab.com/likeablob/openvino-docker:devel-runtime-${T_ARCH}
+
+    - docker pull ${TAG_BUILD2} || true
+    - docker build --cache-from ${TAG_BUILD2} --pull --target build -t ${TAG_BUILD} -f ${T_ARCH}.Dockerfile .
+    # - docker tag ${TAG_BUILD2} ${TAG_BUILD} # A temporary tag for `runtime` build
+    # - docker tag ${TAG_BUILD} openvino-build-${T_ARCH}:latest  # A temporary tag for `runtime` build
+    - docker push ${TAG_BUILD}
+
+    - docker pull ${TAG_RUNTIME2} || true
+    - docker build --cache-from ${TAG_BUILD2} --cache-from ${TAG_RUNTIME2} --pull --target runtime -t ${TAG_RUNTIME} -f ${T_ARCH}.Dockerfile .
+    # - docker tag ${TAG_RUNTIME2} ${TAG_RUNTIME} # A temporary tag for `runtime` build
+    - docker push ${TAG_RUNTIME}
+
+    # - docker-compose -f docker-compose.devel.yml build dev
+    # - docker-compose -f docker-compose.devel.yml build runtime
+    # - docker tag openvino-build-${T_ARCH} "${IMAGE_TAG}-build-${T_ARCH}"
+    # - docker tag openvino-runtime-${T_ARCH} "${IMAGE_TAG}-runtime-${T_ARCH}"
+  only:
+    - master
+    - devel
