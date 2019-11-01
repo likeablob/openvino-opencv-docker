@@ -1,0 +1,18 @@
+version: "3"
+services:
+  app:
+    image: registry.gitlab.com/likeablob/openvino-opencv-docker:devel-runtime-${T_ARCH}
+    volumes:
+      - "/dev:/dev"
+      - ~/.Xauthority:/root/.Xauthority
+      - /tmp/.X11-unix/:/tmp/.X11-unix/
+      - ".:/workdir:rw"
+    environment:
+      DISPLAY: $DISPLAY
+      QT_X11_NO_MITSHM: 1
+    network_mode: host
+    privileged: true
+    working_dir: /workdir
+    entrypoint: "python3 app.py"
+
+
